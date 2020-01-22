@@ -6,42 +6,45 @@ from contextlib import closing
 from bs4 import BeautifulSoup
 
 def main():
-    run='test'
-    url ='https://www.tennis-warehouse.com'
+    run='all'
+    url = 'https://www.tennis-warehouse.com/stringcontent.html'
+    base_url = 'https://www.tennis-warehouse.com'
 
-    variables = ['Name','Overall', 'Groundstrokes', 'Volleys', 'Serves', 'Returns', 'Power', 'Control', 'Maneuverability', 'Stability', 'Comfort', 'Touch/Feel', 'Topspin', 'Slice', 'Length', 'Head Size', 'Weight', 'Balance Point', 'Construction', 'Composition', 'String Pattern', 'Flex Rating', 'Swing Weight', 'URL']
+    variables = ['Name', 'Price', 'Overall', 'Power', 'Spin', 'Comfort', 'Control', 'Touch', 'Feel', 'String Movement', 'Playability Duration', 'Durability', 'URL'] 
 
     if run=='test':
-        url ='https://www.tennis-warehouse.com/reviews/EZ1HB/EZ1HBreview.html'
-        #url = 'https://www.tennis-warehouse.com/reviews/PRF97A/PRF97Areview.html'
-        #url = 'https://www.tennis-warehouse.com/reviews/BPD1H/BPD1Hreview.html'
-        #url = 'https://www.tennis-warehouse.com/Reviews/BPAR/BPARReview.html'
-        #url = 'https://www.tennis-warehouse.com/reviews/HG3RMP/HG3RMPreview.html'
-        review = get_vars(url, variables)
-        print(review)
+        #url = "https://www.tennis-warehouse.com/reviews/BRPMB15/BRPMB15review.html"
+        #url = "https://www.tennis-warehouse.com/reviews/WRS17/WRS17review.html"
+        url = "https://www.tennis-warehouse.com/reviews/VCYC/VCYCreview.html"
+        review = get_vars(base_url, url, variables)
+        print(review) 
+
 
     if run=='all':
         db = {}
         index = 1
         req = get(url)
         soup = BeautifulSoup(req.text, "html.parser")
-        racquet_brand_links = soup.find_all("a")
-        for rbl in racquet_brand_links:
-            if 'racquets' in rbl['href']:
-                url2 = url + rbl['href']
-                req_brand = get(url2)
-                soup_brand = BeautifulSoup(req_brand.text, "html.parser")
-                review_links = soup_brand.find_all("a",{'class':'review'})
-                for rl in review_links:
-                    url3 = url + rl['href']
-                    print(url3)
-                    try:
-                        review = get_vars(url3, variables)
-                        db[index] = review
-                        index = index + 1
-                    except:
-                        pass
-        with open("racquets.tsv", "w") as f:
+        brand_links = soup.find_all('ul', {'class':'lnav_section'})
+        for bl in brand_links:
+            for link in bl.select('li'):
+                if 'String' in link.text.strip().split()[-1]:
+                    url2 = base_url + link.find('a')['href']
+                    brand = get(url2)
+                    soup_brand = BeautifulSoup(brand.text, "html.parser")
+                    review_links = soup_brand.find_all("a",{'class':'review'})
+                    for rl in review_links:
+                        url3 = base_url + rl['href']
+                        print(url3)
+                        try:
+                            review = get_vars(base_url, url3, variables)
+                            print(review)
+                            db[index] = review
+                            index = index + 1
+                        except:
+                            pass
+      
+        with open("strings.tsv", "w") as f:
             print('\t'.join(variables), file = f)
             for k,v in db.items():
                 vals=list(db[k].values())
@@ -85,7 +88,7 @@ def log_error(e):
     print(e)
 
 
-def get_vars(url, review_vars):
+def get_vars(base_url, url, review_vars):
     """
     Pull review variabes from review webpage table.
     """
@@ -93,46 +96,34 @@ def get_vars(url, review_vars):
     html = BeautifulSoup(raw_html, 'html.parser')
     
     review = dict.fromkeys(review_vars)
-    
-    for h1 in html.select('h1'):
-        review['Name']=h1.text.replace(' Racquet Review', '')
+  
+    #NAME
+    review['Name'] = html.find('h1').text.replace(' String Review', '')
 
-    for div in html.select('div'):
-        if 'class' in div.attrs:
-            if div['class']==['overall', 'fr']:
-                fields=div.text.strip().split('\n')
-                review[fields[0]]=fields[1]
-            if div['class']==['review_btns']:  
-                for a in div.select('a'):
-                    if a.text=='Order Now':
-                        review['URL']=a['href']
-            if div['class']==['review_scores'] or div['class']==['racquet_specs', 'cf']:
-                for tr in div.select('tr'):
-                    td_list = []
-                    for th in tr.select('th'):
-                        td_list.append(th.get_text())
-                    for td in tr.select('td'):
-                        td_list.append(td.text)
-                    if len(td_list)>0:
-                        if td_list[0] in review_vars:
-                            if td_list[0]=="Balance Point":
-                                review[td_list[0]]=td_list[2]
-                            else:
-                                review[td_list[0]]=td_list[1]
-            if div['class']==['scores']:
-                print(div)
-                for tr in div.select('tr'):
-                    td_list=[]
-                    for th in tr.select('th'):
-                        td_list.append(th.get_text())
-                    for td in tr.select('td'):
-                        td_list.append(td.get_text())
-                    if td_list[0]=="Balance Point":
-                        review[td_list[0]]=td_list[2]
-                    else:
-                        review[td_list[0]]=td_list[1]
-
+    #PRICE
+    if html.find('div', {'id':'pricebox'}):
+        review['Price'] = html.find('div', {'id':'pricebox'}).find('h1').text
+    if html.find('span', {'class':'price'}):
+        review['Price'] = html.find('span', {'class':'price'}).text.replace('Price: ', '')
     
+    #REVIEW VARIABLES
+    if html.find('div', {'class':'score_box'}):
+        for tr in html.find('div', {'class':'score_box'}).select('tr'):
+            fields = tr.text.strip().split('\n')
+            if fields[0] in review_vars:
+                review[fields[0]] = fields[1]
+    if html.find('div', {'class':'review_scores'}):
+        for tr in html.find('div', {'class':'review_scores'}).select('tr'):
+            fields = tr.text.strip().split('\n')
+            if fields[0] in review_vars:
+                review[fields[0]] = fields[1]
+
+    #URL
+    if html.find('div', {'id':'pricebox'}):
+        review['URL'] = base_url + html.find('div', {'id':'pricebox'}).find('a')['href']
+    if html.find('div', {'class':'review_btns'}):
+        review['URL'] = html.find('a', {'class':'button'})['href']
+
     return(review)
 
 if __name__ == "__main__":
