@@ -10,7 +10,7 @@ def main():
     url = 'https://www.tennis-warehouse.com/stringcontent.html'
     base_url = 'https://www.tennis-warehouse.com'
 
-    variables = ['Name', 'Price', 'Overall', 'Power', 'Spin', 'Comfort', 'Control', 'Touch', 'Feel', 'String Movement', 'Playability Duration', 'Durability', 'URL'] 
+    variables = ['Name', 'Price', 'Overall', 'Power', 'Spin', 'Comfort', 'Control', 'Touch/Feel', 'String Movement', 'Playability Duration', 'Durability', 'URL'] 
 
     if run=='test':
         #url = "https://www.tennis-warehouse.com/reviews/BRPMB15/BRPMB15review.html"
@@ -33,17 +33,19 @@ def main():
                     brand = get(url2)
                     soup_brand = BeautifulSoup(brand.text, "html.parser")
                     review_links = soup_brand.find_all("a",{'class':'review'})
-                    for rl in review_links:
-                        url3 = base_url + rl['href']
-                        print(url3)
-                        try:
-                            review = get_vars(base_url, url3, variables)
-                            print(review)
-                            db[index] = review
-                            index = index + 1
-                        except:
-                            pass
-      
+                    while index < 10:
+                        for rl in review_links:
+                            url3 = base_url + rl['href']
+                            print(url3)
+                            try:
+                                review = get_vars(base_url, url3, variables)
+                                db[index] = review
+                                index = index + 1
+                            except:
+                                pass
+        
+        db = remove_dups(db)
+
         with open("strings.tsv", "w") as f:
             print('\t'.join(variables), file = f)
             for k,v in db.items():
@@ -112,11 +114,15 @@ def get_vars(base_url, url, review_vars):
             fields = tr.text.strip().split('\n')
             if fields[0] in review_vars:
                 review[fields[0]] = fields[1]
+            if fields[0] in ['Touch','Feel']:
+                review['Touch/Feel'] = fields[1]
     if html.find('div', {'class':'review_scores'}):
         for tr in html.find('div', {'class':'review_scores'}).select('tr'):
             fields = tr.text.strip().split('\n')
             if fields[0] in review_vars:
                 review[fields[0]] = fields[1]
+            if fields[0] in ['Touch','Feel']:
+                review['Touch/Feel'] = fields[1]
 
     #URL
     if html.find('div', {'id':'pricebox'}):
@@ -125,6 +131,17 @@ def get_vars(base_url, url, review_vars):
         review['URL'] = html.find('a', {'class':'button'})['href']
 
     return(review)
+
+def remove_dups(db):
+    """
+    Remove duplicate review rows (excluding url and price)
+    """
+    
+    for k,v in db.items():
+        for x,y in v.items():
+            print(x)
+
+    return(db)
 
 if __name__ == "__main__":
     main()
