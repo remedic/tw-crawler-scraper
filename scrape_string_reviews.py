@@ -4,6 +4,7 @@ from requests import get
 from requests.exceptions import RequestException
 from contextlib import closing
 from bs4 import BeautifulSoup
+import re
 
 def main():
     run='all'
@@ -22,6 +23,7 @@ def main():
 
     if run=='all':
         db = {}
+        fail = []
         index = 1
         req = get(url)
         soup = BeautifulSoup(req.text, "html.parser")
@@ -34,17 +36,25 @@ def main():
                     soup_brand = BeautifulSoup(brand.text, "html.parser")
                     review_links = soup_brand.find_all("a",{'class':'review'})
                     for rl in review_links:
-                        url3 = base_url + rl['href']
-                        print(url3)
                         if index < 40:
+                            url3 = base_url + rl['href']
+                            print(url3)
                             try:
                                 review = get_vars(base_url, url3, variables)
                                 db[index] = review
                                 index = index + 1
                             except:
+                                fail.append(url3)
                                 pass
         
         db = remove_dups(db)
+        
+        if len(fail)>0:
+            print("\nFAILED URLS:")
+            for url in fail:
+                print(url)
+        else:
+            print("\nNO FAILED URLS")
 
         with open("strings.tsv", "w") as f:
             print('\t'.join(variables), file = f)
@@ -96,11 +106,10 @@ def get_vars(base_url, url, review_vars):
     """
     raw_html = simple_get(url)
     html = BeautifulSoup(raw_html, 'html.parser')
-    
     review = dict.fromkeys(review_vars)
   
     #NAME
-    review['Name'] = html.find('h1').text.replace(' String Review', '')
+    review['Name'] = re.sub(r" String.*?Review" , "",html.find('h1').text)
 
     #PRICE
     if html.find('div', {'id':'pricebox'}):
@@ -129,7 +138,7 @@ def get_vars(base_url, url, review_vars):
         review['URL'] = base_url + html.find('div', {'id':'pricebox'}).find('a')['href']
     if html.find('div', {'class':'review_btns'}):
         review['URL'] = html.find('a', {'class':'button'})['href']
-
+    
     return(review)
 
 def remove_dups(db):
