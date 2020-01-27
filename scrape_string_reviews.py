@@ -37,19 +37,18 @@ def main():
                     soup_brand = BeautifulSoup(brand.text, "html.parser")
                     review_links = soup_brand.find_all("a",{'class':'review'})
                     for rl in review_links:
-                        if index < 10:
-                            url3 = base_url + rl['href']
-                            print(url3)
-                            try:
-                                review = get_vars(base_url, url3, variables)
-                                if not check_dups(review, db):
-                                    db[index] = review
-                                    index = index + 1
-                                else:
-                                    pass
-                            except:
-                                fail.append(url3)
+                        url3 = base_url + rl['href']
+                        print(url3)
+                        try:
+                            review = get_vars(base_url, url3, variables)
+                            if not check_dups(review, db):
+                                db[index] = review
+                                index = index + 1
+                            else:
                                 pass
+                        except:
+                            fail.append(url3)
+                            pass
         
         
         if len(fail)>0:
