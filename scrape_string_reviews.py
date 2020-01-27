@@ -33,10 +33,10 @@ def main():
                     brand = get(url2)
                     soup_brand = BeautifulSoup(brand.text, "html.parser")
                     review_links = soup_brand.find_all("a",{'class':'review'})
-                    while index < 10:
-                        for rl in review_links:
-                            url3 = base_url + rl['href']
-                            print(url3)
+                    for rl in review_links:
+                        url3 = base_url + rl['href']
+                        print(url3)
+                        if index < 40:
                             try:
                                 review = get_vars(base_url, url3, variables)
                                 db[index] = review
