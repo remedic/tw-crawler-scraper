@@ -5,6 +5,7 @@ from requests.exceptions import RequestException
 from contextlib import closing
 from bs4 import BeautifulSoup
 import re
+import copy
 
 def main():
     run='all'
@@ -36,18 +37,20 @@ def main():
                     soup_brand = BeautifulSoup(brand.text, "html.parser")
                     review_links = soup_brand.find_all("a",{'class':'review'})
                     for rl in review_links:
-                        if index < 40:
+                        if index < 10:
                             url3 = base_url + rl['href']
                             print(url3)
                             try:
                                 review = get_vars(base_url, url3, variables)
-                                db[index] = review
-                                index = index + 1
+                                if not check_dups(review, db):
+                                    db[index] = review
+                                    index = index + 1
+                                else:
+                                    pass
                             except:
                                 fail.append(url3)
                                 pass
         
-        db = remove_dups(db)
         
         if len(fail)>0:
             print("\nFAILED URLS:")
@@ -141,16 +144,27 @@ def get_vars(base_url, url, review_vars):
     
     return(review)
 
-def remove_dups(db):
+def check_dups(review, db):
     """
-    Remove duplicate review rows (excluding url and price)
+    Check if there is a duplicate row in dict already (excluding price and url)
     """
-    
-    for k,v in db.items():
-        for x,y in v.items():
-            print(x)
 
-    return(db)
+    if len(db)>0:
+        tmp_review = copy.deepcopy(review)
+        del tmp_review['Price']
+        del tmp_review['URL']
+
+        tmp_db = copy.deepcopy(db)
+        for index,string_dict in tmp_db.items():
+            del string_dict['Price']
+            del string_dict['URL']
+        
+        if tmp_review in tmp_db.values():
+            return True
+        else:
+            return False
+    else:
+        return False
 
 if __name__ == "__main__":
     main()
