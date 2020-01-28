@@ -14,7 +14,7 @@ def main():
     thread_posts = []
         
     thread_posts = recursive_crawler(url, thread_posts)
-    print(len(thread_posts))
+    print("Scraped " + str(len(thread_posts)) + " forum posts")
 
     #parse list of entries and output to file
     with open(out_file_name, 'w') as fo:
