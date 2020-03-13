@@ -93,29 +93,31 @@ def get_page_posts(url):
     for article in html.select('article'):
         post_dict= dict.fromkeys(post_keys)
         for div in article.select('div'):
-            #Get Username
-            if div['class']==['message-userDetails']:
-                username = div.select('h4')[0].text
-                post_dict["User"]=username
+            if 'class' in div.attrs:
+                #Get Username
+                if div['class']==['message-userDetails']:
+                    username = div.select('h4')[0].text
+                    post_dict["User"]=username
+                
+                #Get post date
+                if div['class']==['message-attribution-main']:
+                    post_date = div.select('a')[0].text
+                    post_dict["Date"]=post_date.strip()
+
+                #Get post index
+                if div['class']==['message-main', 'js-quickEditTarget']:
+                    for ul in div.select('ul'):
+                        a=ul.select('a')
+                        if len(a)!=0:
+                            post_index=a[-1].text.strip()[1:]
+                            post_dict["Index"]=post_index
+
+                #Get post text
+                if div['class']==['bbWrapper']:
+                    post_text_list=re.sub(r"[\n\t]+", "\n", div.text).strip().split("\n")
+                    post_text = '\n'.join(post_text_list)
+                    post_dict["Text"]=post_text
             
-            #Get post date
-            if div['class']==['message-attribution-main']:
-                post_date = div.select('a')[0].text
-                post_dict["Date"]=post_date.strip()
-
-            #Get post index
-            if div['class']==['message-main', 'js-quickEditTarget']:
-                for ul in div.select('ul'):
-                    a=ul.select('a')
-                    if len(a)!=0:
-                        post_index=a[-1].text.strip()[1:]
-                        post_dict["Index"]=post_index
-
-            #Get post text
-            if div['class']==['bbWrapper']:
-                post_text_list=re.sub(r"[\n\t]+", "\n", div.text).strip().split("\n")
-                post_text = '\n'.join(post_text_list)
-                post_dict["Text"]=post_text
 
         if post_dict["User"]!=None:
             page_db.append(post_dict)
